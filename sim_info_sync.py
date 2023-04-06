@@ -121,10 +121,10 @@ class SimInfoSync():
         check_counter = 0        # counter for data version update check
 
         while self.data_updating:
-            data_scor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)
-            data_tele = rF2data.rF2Telemetry.from_buffer_copy(self._rf2_tele)
-            self.LastExt = rF2data.rF2Extended.from_buffer_copy(self._rf2_ext)
-            self.LastFfb = rF2data.rF2ForceFeedback.from_buffer_copy(self._rf2_ffb)
+            data_scor = rF2data.rF2Scoring.from_buffer(self._rf2_scor)
+            data_tele = rF2data.rF2Telemetry.from_buffer(self._rf2_tele)
+            self.LastExt = rF2data.rF2Extended.from_buffer(self._rf2_ext)
+            self.LastFfb = rF2data.rF2ForceFeedback.from_buffer(self._rf2_ffb)
 
             # Update player index
             if not data_freezed:
