@@ -63,11 +63,11 @@ class RF2MMap:
             rf2_data: rF2 data class defined in rF2data, ex. rF2data.rF2Scoring.
         """
         self.mmap_id = mmap_name.strip("$")
+        self.update = None
         self._mmap_name = mmap_name
         self._rf2_data = rf2_data
         self._mmap_instance = None
         self._mmap_output = None
-        self._access_mode = 0
         self._buffer_sharing = False
 
     def create(self, access_mode: int = 0, rf2_pid: str = "") -> None:
@@ -77,13 +77,16 @@ class RF2MMap:
             access_mode: 0 = copy access, 1 = direct access.
             rf2_pid: rF2 Process ID for accessing server data.
         """
-        self._access_mode = access_mode
         self._mmap_instance = platform_mmap(
             name=self._mmap_name,
             size=ctypes.sizeof(self._rf2_data),
             pid=rf2_pid
         )
         self.__buffer_copy(True)
+        if access_mode:
+            self.update = self.__buffer_share
+        else:
+            self.update = self.__buffer_copy
         mode = "Direct" if access_mode else "Copy"
         logger.info("sharedmemory: ACTIVE: %s (%s Access)", self.mmap_id, mode)
 
@@ -99,13 +102,6 @@ class RF2MMap:
             logger.info("sharedmemory: CLOSED: %s", self.mmap_id)
         except BufferError:
             logger.error("sharedmemory: buffer error while closing mmap")
-
-    def update(self) -> None:
-        """Update mmap data"""
-        if self._access_mode:
-            self.__buffer_share()
-        else:
-            self.__buffer_copy()
 
     @property
     def data(self):
@@ -470,6 +466,13 @@ if __name__ == "__main__":
     time.sleep(0.2)
 
     print(SEPARATOR)
+    print("Test API - Restart")
+    info.stop()
+    info.setMode()  # set copy access
+    info.setPlayerOverride()  # disable player override
+    info.start()
+
+    print(SEPARATOR)
     print("Test API - Read")
     version = info.rf2Ext.mVersion.decode()
     driver = info.rf2ScorVeh(0).mDriverName.decode(encoding="iso-8859-1")
@@ -479,25 +482,5 @@ if __name__ == "__main__":
     print(f"track name    : {track if version else 'not running'}")
 
     print(SEPARATOR)
-    print("Test API - Restart")
-    info.stop()
-    info.setMode(0)  # set copy access
-    info.setPlayerOverride(False)  # disable player override
-    info.start()
-
-    print(SEPARATOR)
-    print("Test API - Multi starts")
-    info.start()
-    info.start()
-    info.start()
-    info.start()
-
-    print(SEPARATOR)
     print("Test API - Close")
-    info.stop()
-
-    print(SEPARATOR)
-    print("Test API - Multi stop")
-    info.stop()
-    info.stop()
     info.stop()
