@@ -288,8 +288,7 @@ class SyncData:
                 self.copy_player_tele()
             # Setup updating thread
             self._event.clear()
-            self._update_thread = threading.Thread(
-                target=self.__update, daemon=True)
+            self._update_thread = threading.Thread(target=self.__update, daemon=True)
             self._update_thread.start()
             logger.info("sharedmemory: UPDATING: thread started")
             logger.info("sharedmemory: player index override: %s", self.override_player_index)
@@ -323,15 +322,16 @@ class SyncData:
                 # Get player data
                 data_synced = self.__sync_player_data()
                 # Pause if local player index no longer exists, 5 tries
-                if not data_synced and reset_counter < 6:
-                    reset_counter += 1
-                elif data_synced:
+                if data_synced:
                     reset_counter = 0
                     self.paused = False
-                # Activate pause
-                if reset_counter == 5:
-                    self.paused = True
-                    logger.info("sharedmemory: UPDATING: player data paused")
+                else:
+                    if reset_counter < 6:
+                        reset_counter += 1
+                        # Activate pause
+                        if reset_counter == 5:
+                            self.paused = True
+                            logger.info("sharedmemory: UPDATING: player data paused")
 
             if last_version_update != self.dataset.scor.mVersionUpdateEnd:
                 last_update_time = time.time()
