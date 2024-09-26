@@ -7,7 +7,6 @@ and cross-platform Linux support (by Bernat)
 """
 
 from __future__ import annotations
-import copy
 import ctypes
 import logging
 import mmap
@@ -64,10 +63,10 @@ class RF2MMap:
         """
         self.mmap_id = mmap_name.strip("$")
         self.update = None
+        self.data = None
         self._mmap_name = mmap_name
         self._rf2_data = rf2_data
         self._mmap_instance = None
-        self._mmap_output = None
         self._buffer_sharing = False
 
     def create(self, access_mode: int = 0, rf2_pid: str = "") -> None:
@@ -103,16 +102,11 @@ class RF2MMap:
         except BufferError:
             logger.error("sharedmemory: buffer error while closing mmap")
 
-    @property
-    def data(self):
-        """Output mmap data"""
-        return self._mmap_output
-
     def __buffer_share(self) -> None:
         """Share buffer direct access, may result desync"""
         if not self._buffer_sharing:
             self._buffer_sharing = True
-            self._mmap_output = self._rf2_data.from_buffer(self._mmap_instance)
+            self.data = self._rf2_data.from_buffer(self._mmap_instance)
 
     def __buffer_copy(self, skip_check: bool = False) -> None:
         """Copy buffer access, check version before assign new data copy
@@ -122,17 +116,17 @@ class RF2MMap:
         """
         temp = self._rf2_data.from_buffer_copy(self._mmap_instance)
         if temp.mVersionUpdateEnd == temp.mVersionUpdateBegin or skip_check:
-            self._mmap_output = temp
+            self.data = temp
 
 
 class MMapDataSet:
     """Create mmap data set"""
 
     def __init__(self) -> None:
-        self._scor = RF2MMap("$rFactor2SMMP_Scoring$", rF2data.rF2Scoring)
-        self._tele = RF2MMap("$rFactor2SMMP_Telemetry$", rF2data.rF2Telemetry)
-        self._ext = RF2MMap("$rFactor2SMMP_Extended$", rF2data.rF2Extended)
-        self._ffb = RF2MMap("$rFactor2SMMP_ForceFeedback$", rF2data.rF2ForceFeedback)
+        self.scor = RF2MMap("$rFactor2SMMP_Scoring$", rF2data.rF2Scoring)
+        self.tele = RF2MMap("$rFactor2SMMP_Telemetry$", rF2data.rF2Telemetry)
+        self.ext = RF2MMap("$rFactor2SMMP_Extended$", rF2data.rF2Extended)
+        self.ffb = RF2MMap("$rFactor2SMMP_ForceFeedback$", rF2data.rF2ForceFeedback)
 
     def create_mmap(self, access_mode: int, rf2_pid: str) -> None:
         """Create mmap instance
@@ -141,44 +135,24 @@ class MMapDataSet:
             access_mode: 0 = copy access, 1 = direct access.
             rf2_pid: rF2 Process ID for accessing server data.
         """
-        self._scor.create(access_mode, rf2_pid)
-        self._tele.create(access_mode, rf2_pid)
-        self._ext.create(1, rf2_pid)
-        self._ffb.create(1, rf2_pid)
+        self.scor.create(access_mode, rf2_pid)
+        self.tele.create(access_mode, rf2_pid)
+        self.ext.create(1, rf2_pid)
+        self.ffb.create(1, rf2_pid)
 
     def close_mmap(self) -> None:
         """Close mmap instance"""
-        self._scor.close()
-        self._tele.close()
-        self._ext.close()
-        self._ffb.close()
+        self.scor.close()
+        self.tele.close()
+        self.ext.close()
+        self.ffb.close()
 
     def update_mmap(self) -> None:
         """Update mmap data"""
-        self._scor.update()
-        self._tele.update()
-        self._ext.update()
-        self._ffb.update()
-
-    @property
-    def scor(self):
-        """Scoring data"""
-        return self._scor.data
-
-    @property
-    def tele(self):
-        """Telemetry data"""
-        return self._tele.data
-
-    @property
-    def ext(self):
-        """Extended data"""
-        return self._ext.data
-
-    @property
-    def ffb(self):
-        """Force feedback data"""
-        return self._ffb.data
+        self.scor.update()
+        self.tele.update()
+        self.ext.update()
+        self.ffb.update()
 
 
 class SyncData:
@@ -206,18 +180,10 @@ class SyncData:
         self.player_scor = None
         self.player_tele = None
 
-    def copy_player_scor(self, index: int = INVALID_INDEX) -> None:
-        """Copy scoring player data from matching index"""
-        self.player_scor = copy.copy(self.dataset.scor.mVehicles[index])
-
-    def copy_player_tele(self, index: int = INVALID_INDEX) -> None:
-        """Copy telemetry player data from matching index"""
-        self.player_tele = copy.copy(self.dataset.tele.mVehicles[index])
-
     def __local_scor_index(self) -> int:
         """Find local player scoring index"""
         for scor_idx in range(MAX_VEHICLES):
-            if self.dataset.scor.mVehicles[scor_idx].mIsPlayer:
+            if self.dataset.scor.data.mVehicles[scor_idx].mIsPlayer:
                 return scor_idx
         return INVALID_INDEX
 
@@ -226,7 +192,7 @@ class SyncData:
 
         Returns:
             False, if no valid player scoring index found.
-            True, update player data copy.
+            True, set player data.
         """
         if not self.override_player_index:
             # Update scoring index
@@ -234,9 +200,9 @@ class SyncData:
             if scor_idx == INVALID_INDEX:
                 return False  # index not found, not synced
             self.player_scor_index = scor_idx
-        # Copy player data
-        self.copy_player_scor(self.player_scor_index)
-        self.copy_player_tele(self.sync_tele_index(self.player_scor_index))
+        # Set player data
+        self.player_scor = self.dataset.scor.data.mVehicles[self.player_scor_index]
+        self.player_tele = self.dataset.tele.data.mVehicles[self.sync_tele_index(self.player_scor_index)]
         return True  # found index, synced
 
     def __update_tele_index_dict(self, num_vehicles: int) -> None:
@@ -251,7 +217,7 @@ class SyncData:
             num_vehicles: Total number of vehicles.
         """
         for _index in range(num_vehicles):
-            self._tele_idx_dict[self.dataset.tele.mVehicles[_index].mID] = _index
+            self._tele_idx_dict[self.dataset.tele.data.mVehicles[_index].mID] = _index
 
     def sync_tele_index(self, scor_idx: int) -> int:
         """Sync telemetry index
@@ -267,7 +233,7 @@ class SyncData:
             Player telemetry index.
         """
         return self._tele_idx_dict.get(
-            self.dataset.scor.mVehicles[scor_idx].mID, INVALID_INDEX)
+            self.dataset.scor.data.mVehicles[scor_idx].mID, INVALID_INDEX)
 
     def start(self, access_mode: int, rf2_pid: str) -> None:
         """Update & sync mmap data copy in separate thread
@@ -282,10 +248,10 @@ class SyncData:
             self._updating = True
             # Initialize mmap data
             self.dataset.create_mmap(access_mode, rf2_pid)
-            self.__update_tele_index_dict(self.dataset.tele.mNumVehicles)
+            self.__update_tele_index_dict(self.dataset.tele.data.mNumVehicles)
             if not self.__sync_player_data():
-                self.copy_player_scor()
-                self.copy_player_tele()
+                self.player_scor = self.dataset.scor.data.mVehicles[INVALID_INDEX]
+                self.player_tele = self.dataset.tele.data.mVehicles[INVALID_INDEX]
             # Setup updating thread
             self._event.clear()
             self._update_thread = threading.Thread(target=self.__update, daemon=True)
@@ -316,7 +282,7 @@ class SyncData:
 
         while not self._event.wait(update_delay):
             self.dataset.update_mmap()
-            self.__update_tele_index_dict(self.dataset.tele.mNumVehicles)
+            self.__update_tele_index_dict(self.dataset.tele.data.mNumVehicles)
             # Update player data & index
             if not data_freezed:
                 # Get player data
@@ -333,9 +299,9 @@ class SyncData:
                             self.paused = True
                             logger.info("sharedmemory: UPDATING: player data paused")
 
-            if last_version_update != self.dataset.scor.mVersionUpdateEnd:
+            if last_version_update != self.dataset.scor.data.mVersionUpdateEnd:
                 last_update_time = time.time()
-                last_version_update = self.dataset.scor.mVersionUpdateEnd
+                last_version_update = self.dataset.scor.data.mVersionUpdateEnd
 
             # Set freeze state if data stopped updating after 2s
             if not data_freezed and time.time() - last_update_time > 2:
@@ -363,6 +329,11 @@ class RF2SM:
         self._sync = SyncData()
         self._access_mode = 0
         self._rf2_pid = ""
+        # Assign mmap instance
+        self._scor = self._sync.dataset.scor
+        self._tele = self._sync.dataset.tele
+        self._ext = self._sync.dataset.ext
+        self._ffb = self._sync.dataset.ffb
 
     def start(self) -> None:
         """Start data updating thread"""
@@ -395,7 +366,7 @@ class RF2SM:
     @property
     def rf2ScorInfo(self) -> object:
         """rF2 scoring info data"""
-        return self._sync.dataset.scor.mScoringInfo
+        return self._scor.data.mScoringInfo
 
     def rf2ScorVeh(self, index: int | None = None) -> object:
         """rF2 scoring vehicle data
@@ -407,7 +378,7 @@ class RF2SM:
         """
         if index is None:
             return self._sync.player_scor
-        return self._sync.dataset.scor.mVehicles[index]
+        return self._scor.data.mVehicles[index]
 
     def rf2TeleVeh(self, index: int | None = None) -> object:
         """rF2 telemetry vehicle data
@@ -419,17 +390,17 @@ class RF2SM:
         """
         if index is None:
             return self._sync.player_tele
-        return self._sync.dataset.tele.mVehicles[self._sync.sync_tele_index(index)]
+        return self._tele.data.mVehicles[self._sync.sync_tele_index(index)]
 
     @property
     def rf2Ext(self) -> object:
         """rF2 extended data"""
-        return self._sync.dataset.ext
+        return self._ext.data
 
     @property
     def rf2Ffb(self) -> object:
         """rF2 force feedback data"""
-        return self._sync.dataset.ffb
+        return self._ffb.data
 
     @property
     def playerIndex(self) -> int:
@@ -440,7 +411,7 @@ class RF2SM:
         """Check whether index is player"""
         if self._sync.override_player_index:
             return self._sync.player_scor_index == index
-        return self._sync.dataset.scor.mVehicles[index].mIsPlayer
+        return self._scor.data.mVehicles[index].mIsPlayer
 
     @property
     def isPaused(self) -> bool:
