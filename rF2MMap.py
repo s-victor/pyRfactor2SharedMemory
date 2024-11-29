@@ -47,6 +47,18 @@ def linux_mmap(name: str, size: int) -> mmap:
     return mmap.mmap(file.fileno(), size)
 
 
+def local_scoring_index(scor_veh: rF2data.rF2VehicleScoring_Array_128) -> int:
+    """Find local player scoring index
+
+    Args:
+        scor_veh: scoring mVehicles array.
+    """
+    for scor_idx, veh_info in enumerate(scor_veh):
+        if veh_info.mIsPlayer:
+            return scor_idx
+    return INVALID_INDEX
+
+
 class RF2MMap:
     """Create rF2 Memory Map
 
@@ -171,7 +183,7 @@ class SyncData:
         self._updating = False
         self._update_thread = None
         self._event = threading.Event()
-        self._tele_idx_dict = {_index: _index for _index in range(128)}
+        self._tele_indexes = {_index: _index for _index in range(128)}
 
         self.dataset = MMapDataSet()
         self.paused = False
@@ -179,13 +191,6 @@ class SyncData:
         self.player_scor_index = INVALID_INDEX
         self.player_scor = None
         self.player_tele = None
-
-    def __local_scor_index(self) -> int:
-        """Find local player scoring index"""
-        for scor_idx in range(MAX_VEHICLES):
-            if self.dataset.scor.data.mVehicles[scor_idx].mIsPlayer:
-                return scor_idx
-        return INVALID_INDEX
 
     def __sync_player_data(self) -> bool:
         """Sync local player data
@@ -196,7 +201,7 @@ class SyncData:
         """
         if not self.override_player_index:
             # Update scoring index
-            scor_idx = self.__local_scor_index()
+            scor_idx = local_scoring_index(self.dataset.scor.data.mVehicles)
             if scor_idx == INVALID_INDEX:
                 return False  # index not found, not synced
             self.player_scor_index = scor_idx
@@ -205,25 +210,25 @@ class SyncData:
         self.player_tele = self.dataset.tele.data.mVehicles[self.sync_tele_index(self.player_scor_index)]
         return True  # found index, synced
 
-    def __update_tele_index_dict(self, num_vehicles: int) -> None:
+    @staticmethod
+    def __update_tele_indexes(tele_data: rF2data.rF2Telemetry, tele_indexes: dict) -> None:
         """Update telemetry player index dictionary for quick reference
 
         Telemetry index can be different from scoring index.
         Use mID matching to match telemetry index.
 
-        _tele_idx_dict: Telemetry mID:index reference dictionary.
-
         Args:
-            num_vehicles: Total number of vehicles.
+            tele_data: Telemetry data.
+            tele_indexes: Telemetry mID:index reference dictionary.
         """
-        for _index in range(num_vehicles):
-            self._tele_idx_dict[self.dataset.tele.data.mVehicles[_index].mID] = _index
+        for tele_idx, veh_info in zip(range(tele_data.mNumVehicles), tele_data.mVehicles):
+            tele_indexes[veh_info.mID] = tele_idx
 
     def sync_tele_index(self, scor_idx: int) -> int:
         """Sync telemetry index
 
         Use scoring index to find scoring mID,
-        then match with telemetry mID in tele_idx_dict
+        then match with telemetry mID in reference dictionary
         to find telemetry index.
 
         Args:
@@ -232,7 +237,7 @@ class SyncData:
         Returns:
             Player telemetry index.
         """
-        return self._tele_idx_dict.get(
+        return self._tele_indexes.get(
             self.dataset.scor.data.mVehicles[scor_idx].mID, INVALID_INDEX)
 
     def start(self, access_mode: int, rf2_pid: str) -> None:
@@ -248,7 +253,7 @@ class SyncData:
             self._updating = True
             # Initialize mmap data
             self.dataset.create_mmap(access_mode, rf2_pid)
-            self.__update_tele_index_dict(self.dataset.tele.data.mNumVehicles)
+            self.__update_tele_indexes(self.dataset.tele.data, self._tele_indexes)
             if not self.__sync_player_data():
                 self.player_scor = self.dataset.scor.data.mVehicles[INVALID_INDEX]
                 self.player_tele = self.dataset.tele.data.mVehicles[INVALID_INDEX]
@@ -282,7 +287,7 @@ class SyncData:
 
         while not self._event.wait(update_delay):
             self.dataset.update_mmap()
-            self.__update_tele_index_dict(self.dataset.tele.data.mNumVehicles)
+            self.__update_tele_indexes(self.dataset.tele.data, self._tele_indexes)
             # Update player data & index
             if not data_freezed:
                 # Get player data
