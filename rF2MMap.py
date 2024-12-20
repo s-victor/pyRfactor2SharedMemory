@@ -11,8 +11,9 @@ import ctypes
 import logging
 import mmap
 import platform
-import time
 import threading
+from typing import Sequence
+from time import monotonic, sleep
 
 try:
     from . import rF2data
@@ -26,19 +27,19 @@ INVALID_INDEX = -1
 logger = logging.getLogger(__name__)
 
 
-def platform_mmap(name: str, size: int, pid: str = "") -> mmap:
+def platform_mmap(name: str, size: int, pid: str = "") -> mmap.mmap:
     """Platform memory mapping"""
     if PLATFORM == "Windows":
         return windows_mmap(name, size, pid)
     return linux_mmap(name, size)
 
 
-def windows_mmap(name: str, size: int, pid: str) -> mmap:
+def windows_mmap(name: str, size: int, pid: str) -> mmap.mmap:
     """Windows mmap"""
     return mmap.mmap(-1, size, f"{name}{pid}")
 
 
-def linux_mmap(name: str, size: int) -> mmap:
+def linux_mmap(name: str, size: int) -> mmap.mmap:
     """Linux mmap"""
     file = open("/dev/shm/" + name, "a+b")
     if file.tell() == 0:
@@ -47,7 +48,7 @@ def linux_mmap(name: str, size: int) -> mmap:
     return mmap.mmap(file.fileno(), size)
 
 
-def local_scoring_index(scor_veh: rF2data.rF2VehicleScoring_Array_128) -> int:
+def local_scoring_index(scor_veh: Sequence[rF2data.rF2VehicleScoring]) -> int:
     """Find local player scoring index
 
     Args:
@@ -60,11 +61,16 @@ def local_scoring_index(scor_veh: rF2data.rF2VehicleScoring_Array_128) -> int:
 
 
 class RF2MMap:
-    """Create rF2 Memory Map
+    """Create rF2 Memory Map"""
 
-    Attributes:
-        mmap_id: mmap name string.
-    """
+    __slots__ = (
+        "_mmap_name",
+        "_rf2_data",
+        "_mmap_instance",
+        "_buffer_sharing",
+        "update",
+        "data",
+    )
 
     def __init__(self, mmap_name: str, rf2_data: object) -> None:
         """Initialize memory map setting
@@ -73,13 +79,15 @@ class RF2MMap:
             mmap_name: mmap filename, ex. $rFactor2SMMP_Scoring$.
             rf2_data: rF2 data class defined in rF2data, ex. rF2data.rF2Scoring.
         """
-        self.mmap_id = mmap_name.strip("$")
-        self.update = None
-        self.data = None
         self._mmap_name = mmap_name
         self._rf2_data = rf2_data
         self._mmap_instance = None
         self._buffer_sharing = False
+        self.update = None
+        self.data = None
+
+    def __del__(self):
+        logger.info("sharedmemory: GC: MMap %s", self._mmap_name)
 
     def create(self, access_mode: int = 0, rf2_pid: str = "") -> None:
         """Create mmap instance & initial accessible copy
@@ -99,7 +107,7 @@ class RF2MMap:
         else:
             self.update = self.__buffer_copy
         mode = "Direct" if access_mode else "Copy"
-        logger.info("sharedmemory: ACTIVE: %s (%s Access)", self.mmap_id, mode)
+        logger.info("sharedmemory: ACTIVE: %s (%s Access)", self._mmap_name, mode)
 
     def close(self) -> None:
         """Close memory mapping
@@ -110,9 +118,10 @@ class RF2MMap:
         self._buffer_sharing = False
         try:
             self._mmap_instance.close()
-            logger.info("sharedmemory: CLOSED: %s", self.mmap_id)
+            logger.info("sharedmemory: CLOSED: %s", self._mmap_name)
         except BufferError:
             logger.error("sharedmemory: buffer error while closing mmap")
+        self.update = None  # unassign update method (for proper garbage collection)
 
     def __buffer_share(self) -> None:
         """Share buffer direct access, may result desync"""
@@ -134,11 +143,21 @@ class RF2MMap:
 class MMapDataSet:
     """Create mmap data set"""
 
+    __slots__ = (
+        "scor",
+        "tele",
+        "ext",
+        "ffb",
+    )
+
     def __init__(self) -> None:
         self.scor = RF2MMap("$rFactor2SMMP_Scoring$", rF2data.rF2Scoring)
         self.tele = RF2MMap("$rFactor2SMMP_Telemetry$", rF2data.rF2Telemetry)
         self.ext = RF2MMap("$rFactor2SMMP_Extended$", rF2data.rF2Extended)
         self.ffb = RF2MMap("$rFactor2SMMP_ForceFeedback$", rF2data.rF2ForceFeedback)
+
+    def __del__(self):
+        logger.info("sharedmemory: GC: MMapDataSet")
 
     def create_mmap(self, access_mode: int, rf2_pid: str) -> None:
         """Create mmap instance
@@ -179,18 +198,34 @@ class SyncData:
         player_tele: Local player telemetry data.
     """
 
+    __slots__ = (
+        "_updating",
+        "_update_thread",
+        "_event",
+        "_tele_indexes",
+        "paused",
+        "override_player_index",
+        "player_scor_index",
+        "player_scor",
+        "player_tele",
+        "dataset",
+    )
+
     def __init__(self) -> None:
         self._updating = False
         self._update_thread = None
         self._event = threading.Event()
         self._tele_indexes = {_index: _index for _index in range(128)}
 
-        self.dataset = MMapDataSet()
         self.paused = False
         self.override_player_index = False
         self.player_scor_index = INVALID_INDEX
         self.player_scor = None
         self.player_tele = None
+        self.dataset = MMapDataSet()
+
+    def __del__(self):
+        logger.info("sharedmemory: GC: SyncData")
 
     def __sync_player_data(self) -> bool:
         """Sync local player data
@@ -280,7 +315,7 @@ class SyncData:
         self.paused = False  # make sure initial pause state is false
         freezed_version = 0  # store freezed update version number
         last_version_update = 0  # store last update version number
-        last_update_time = 0
+        last_update_time = 0.0
         data_freezed = True  # whether data is freezed
         reset_counter = 0
         update_delay = 0.5  # longer delay while inactive
@@ -296,39 +331,52 @@ class SyncData:
                 if data_synced:
                     reset_counter = 0
                     self.paused = False
-                else:
-                    if reset_counter < 6:
-                        reset_counter += 1
-                        # Activate pause
-                        if reset_counter == 5:
-                            self.paused = True
-                            logger.info("sharedmemory: UPDATING: player data paused")
+                elif reset_counter < 6:
+                    reset_counter += 1
+                    if reset_counter == 5:
+                        self.paused = True
+                        logger.info("sharedmemory: UPDATING: player data paused")
 
-            if last_version_update != self.dataset.scor.data.mVersionUpdateEnd:
-                last_update_time = time.time()
-                last_version_update = self.dataset.scor.data.mVersionUpdateEnd
+            version_update = self.dataset.scor.data.mVersionUpdateEnd
+            if last_version_update != version_update:
+                last_version_update = version_update
+                last_update_time = monotonic()
 
+            if data_freezed:
+                # Check while IN freeze state
+                if freezed_version != last_version_update:
+                    update_delay = 0.01
+                    self.paused = data_freezed = False
+                    logger.info(
+                        "sharedmemory: UPDATING: resumed, data version %s",
+                        last_version_update,
+                    )
+            # Check while NOT IN freeze state
             # Set freeze state if data stopped updating after 2s
-            if not data_freezed and time.time() - last_update_time > 2:
+            elif monotonic() - last_update_time > 2:
                 update_delay = 0.5
-                data_freezed = True
-                self.paused = True
+                self.paused = data_freezed = True
                 freezed_version = last_version_update
                 logger.info(
-                    "sharedmemory: UPDATING: paused, data version %s", freezed_version)
-
-            if data_freezed and freezed_version != last_version_update:
-                update_delay = 0.01
-                data_freezed = False
-                self.paused = False
-                logger.info(
-                    "sharedmemory: UPDATING: resumed, data version %s", last_version_update)
+                    "sharedmemory: UPDATING: paused, data version %s",
+                    freezed_version,
+                )
 
         logger.info("sharedmemory: UPDATING: thread stopped")
 
 
 class RF2SM:
     """RF2 shared memory data output"""
+
+    __slots__ = (
+        "_sync",
+        "_access_mode",
+        "_rf2_pid",
+        "_scor",
+        "_tele",
+        "_ext",
+        "_ffb",
+    )
 
     def __init__(self) -> None:
         self._sync = SyncData()
@@ -339,6 +387,9 @@ class RF2SM:
         self._tele = self._sync.dataset.tele
         self._ext = self._sync.dataset.ext
         self._ffb = self._sync.dataset.ffb
+
+    def __del__(self):
+        logger.info("sharedmemory: GC: RF2SM")
 
     def start(self) -> None:
         """Start data updating thread"""
@@ -369,11 +420,11 @@ class RF2SM:
         self._sync.player_scor_index = min(max(index, INVALID_INDEX), MAX_VEHICLES - 1)
 
     @property
-    def rf2ScorInfo(self) -> object:
+    def rf2ScorInfo(self) -> rF2data.rF2ScoringInfo:
         """rF2 scoring info data"""
         return self._scor.data.mScoringInfo
 
-    def rf2ScorVeh(self, index: int | None = None) -> object:
+    def rf2ScorVeh(self, index: int | None = None) -> rF2data.rF2VehicleScoring:
         """rF2 scoring vehicle data
 
         Specify index for specific player.
@@ -385,7 +436,7 @@ class RF2SM:
             return self._sync.player_scor
         return self._scor.data.mVehicles[index]
 
-    def rf2TeleVeh(self, index: int | None = None) -> object:
+    def rf2TeleVeh(self, index: int | None = None) -> rF2data.rF2VehicleTelemetry:
         """rF2 telemetry vehicle data
 
         Specify index for specific player.
@@ -398,12 +449,12 @@ class RF2SM:
         return self._tele.data.mVehicles[self._sync.sync_tele_index(index)]
 
     @property
-    def rf2Ext(self) -> object:
+    def rf2Ext(self) -> rF2data.rF2Extended:
         """rF2 extended data"""
         return self._ext.data
 
     @property
-    def rf2Ffb(self) -> object:
+    def rf2Ffb(self) -> rF2data.rF2ForceFeedback:
         """rF2 force feedback data"""
         return self._ffb.data
 
@@ -424,7 +475,8 @@ class RF2SM:
         return self._sync.paused
 
 
-if __name__ == "__main__":
+def test_api():
+    """API test run"""
     # Add logger
     test_handler = logging.StreamHandler()
     logger.setLevel(logging.INFO)
@@ -439,7 +491,7 @@ if __name__ == "__main__":
     info.setPlayerOverride(True)  # enable player override
     info.setPlayerIndex(0)  # set player index to 0
     info.start()
-    time.sleep(0.2)
+    sleep(0.2)
 
     print(SEPARATOR)
     print("Test API - Restart")
@@ -460,3 +512,7 @@ if __name__ == "__main__":
     print(SEPARATOR)
     print("Test API - Close")
     info.stop()
+
+
+if __name__ == "__main__":
+    test_api()
