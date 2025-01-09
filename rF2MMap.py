@@ -12,6 +12,7 @@ import logging
 import mmap
 import platform
 import threading
+from copy import copy
 from typing import Sequence
 from time import monotonic, sleep
 
@@ -60,27 +61,27 @@ def local_scoring_index(scor_veh: Sequence[rF2data.rF2VehicleScoring]) -> int:
     return INVALID_INDEX
 
 
-class RF2MMap:
-    """Create rF2 Memory Map"""
+class MMapControl:
+    """Memory map control"""
 
     __slots__ = (
         "_mmap_name",
-        "_rf2_data",
+        "_buffer_data",
         "_mmap_instance",
         "_buffer_sharing",
         "update",
         "data",
     )
 
-    def __init__(self, mmap_name: str, rf2_data: object) -> None:
+    def __init__(self, mmap_name: str, buffer_data: object) -> None:
         """Initialize memory map setting
 
         Args:
             mmap_name: mmap filename, ex. $rFactor2SMMP_Scoring$.
-            rf2_data: rF2 data class defined in rF2data, ex. rF2data.rF2Scoring.
+            buffer_data: buffer data class, ex. rF2data.rF2Scoring.
         """
         self._mmap_name = mmap_name
-        self._rf2_data = rf2_data
+        self._buffer_data = buffer_data
         self._mmap_instance = None
         self._buffer_sharing = False
         self.update = None
@@ -98,14 +99,14 @@ class RF2MMap:
         """
         self._mmap_instance = platform_mmap(
             name=self._mmap_name,
-            size=ctypes.sizeof(self._rf2_data),
+            size=ctypes.sizeof(self._buffer_data),
             pid=rf2_pid
         )
-        self.__buffer_copy(True)
         if access_mode:
             self.update = self.__buffer_share
         else:
             self.update = self.__buffer_copy
+        self.update(True)
         mode = "Direct" if access_mode else "Copy"
         logger.info("sharedmemory: ACTIVE: %s (%s Access)", self._mmap_name, mode)
 
@@ -114,20 +115,20 @@ class RF2MMap:
 
         Create a final accessible mmap data copy before closing mmap instance.
         """
-        self.__buffer_copy(True)
+        self.data = copy(self.data)
         self._buffer_sharing = False
         try:
             self._mmap_instance.close()
             logger.info("sharedmemory: CLOSED: %s", self._mmap_name)
         except BufferError:
-            logger.error("sharedmemory: buffer error while closing mmap")
+            logger.error("sharedmemory: buffer error while closing %s", self._mmap_name)
         self.update = None  # unassign update method (for proper garbage collection)
 
-    def __buffer_share(self) -> None:
+    def __buffer_share(self, _=None) -> None:
         """Share buffer direct access, may result desync"""
         if not self._buffer_sharing:
             self._buffer_sharing = True
-            self.data = self._rf2_data.from_buffer(self._mmap_instance)
+            self.data = self._buffer_data.from_buffer(self._mmap_instance)
 
     def __buffer_copy(self, skip_check: bool = False) -> None:
         """Copy buffer access, check version before assign new data copy
@@ -135,7 +136,7 @@ class RF2MMap:
         Args:
             skip_check: skip data version check.
         """
-        temp = self._rf2_data.from_buffer_copy(self._mmap_instance)
+        temp = self._buffer_data.from_buffer_copy(self._mmap_instance)
         if temp.mVersionUpdateEnd == temp.mVersionUpdateBegin or skip_check:
             self.data = temp
 
@@ -151,10 +152,10 @@ class MMapDataSet:
     )
 
     def __init__(self) -> None:
-        self.scor = RF2MMap("$rFactor2SMMP_Scoring$", rF2data.rF2Scoring)
-        self.tele = RF2MMap("$rFactor2SMMP_Telemetry$", rF2data.rF2Telemetry)
-        self.ext = RF2MMap("$rFactor2SMMP_Extended$", rF2data.rF2Extended)
-        self.ffb = RF2MMap("$rFactor2SMMP_ForceFeedback$", rF2data.rF2ForceFeedback)
+        self.scor = MMapControl(rF2data.rFactor2Constants.MM_SCORING_FILE_NAME, rF2data.rF2Scoring)
+        self.tele = MMapControl(rF2data.rFactor2Constants.MM_TELEMETRY_FILE_NAME, rF2data.rF2Telemetry)
+        self.ext = MMapControl(rF2data.rFactor2Constants.MM_EXTENDED_FILE_NAME, rF2data.rF2Extended)
+        self.ffb = MMapControl(rF2data.rFactor2Constants.MM_FORCE_FEEDBACK_FILE_NAME, rF2data.rF2ForceFeedback)
 
     def __del__(self):
         logger.info("sharedmemory: GC: MMapDataSet")
@@ -182,8 +183,8 @@ class MMapDataSet:
         """Update mmap data"""
         self.scor.update()
         self.tele.update()
-        self.ext.update()
-        self.ffb.update()
+        #self.ext.update()
+        #self.ffb.update()
 
 
 class SyncData:
@@ -306,6 +307,9 @@ class SyncData:
             self._event.set()
             self._updating = False
             self._update_thread.join()
+            # Make final copy before close, otherwise mmap won't close if using direct access
+            self.player_scor = copy(self.player_scor)
+            self.player_tele = copy(self.player_tele)
             self.dataset.close_mmap()
         else:
             logger.warning("sharedmemory: UPDATING: already stopped")
