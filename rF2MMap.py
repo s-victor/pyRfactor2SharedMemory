@@ -25,7 +25,15 @@ PLATFORM = platform.system()
 MAX_VEHICLES = rF2data.rFactor2Constants.MAX_MAPPED_VEHICLES
 INVALID_INDEX = -1
 
-logger = logging.getLogger(__name__)
+
+def get_root_logger_name():
+    """Get root logger name"""
+    for logger_name in logging.root.manager.loggerDict:
+        return logger_name
+    return __name__
+
+
+logger = logging.getLogger(get_root_logger_name())
 
 
 def platform_mmap(name: str, size: int, pid: str = "") -> mmap.mmap:
@@ -67,13 +75,13 @@ class MMapControl:
     __slots__ = (
         "_mmap_name",
         "_buffer_data",
+        "_buffer_version",
         "_mmap_instance",
-        "_buffer_sharing",
         "update",
         "data",
     )
 
-    def __init__(self, mmap_name: str, buffer_data: object) -> None:
+    def __init__(self, mmap_name: str, buffer_data: ctypes.Structure) -> None:
         """Initialize memory map setting
 
         Args:
@@ -82,8 +90,8 @@ class MMapControl:
         """
         self._mmap_name = mmap_name
         self._buffer_data = buffer_data
+        self._buffer_version = None
         self._mmap_instance = None
-        self._buffer_sharing = False
         self.update = None
         self.data = None
 
@@ -102,11 +110,15 @@ class MMapControl:
             size=ctypes.sizeof(self._buffer_data),
             pid=rf2_pid
         )
+
         if access_mode:
             self.update = self.__buffer_share
+            self.data = self._buffer_data.from_buffer(self._mmap_instance)
         else:
             self.update = self.__buffer_copy
-        self.update(True)
+            self.data = self._buffer_data.from_buffer_copy(self._mmap_instance)
+            self._buffer_version = rF2data.rF2MappedBufferVersionBlock.from_buffer(self._mmap_instance)
+
         mode = "Direct" if access_mode else "Copy"
         logger.info("sharedmemory: ACTIVE: %s (%s Access)", self._mmap_name, mode)
 
@@ -115,8 +127,8 @@ class MMapControl:
 
         Create a final accessible mmap data copy before closing mmap instance.
         """
-        self.data = copy(self.data)
-        self._buffer_sharing = False
+        self.data = self._buffer_data.from_buffer_copy(self._mmap_instance)
+        self._buffer_version = None
         try:
             self._mmap_instance.close()
             logger.info("sharedmemory: CLOSED: %s", self._mmap_name)
@@ -124,21 +136,17 @@ class MMapControl:
             logger.error("sharedmemory: buffer error while closing %s", self._mmap_name)
         self.update = None  # unassign update method (for proper garbage collection)
 
-    def __buffer_share(self, _=None) -> None:
-        """Share buffer direct access, may result desync"""
-        if not self._buffer_sharing:
-            self._buffer_sharing = True
-            self.data = self._buffer_data.from_buffer(self._mmap_instance)
+    def __buffer_share(self) -> None:
+        """Share buffer access, may result data desync"""
 
-    def __buffer_copy(self, skip_check: bool = False) -> None:
-        """Copy buffer access, check version before assign new data copy
-
-        Args:
-            skip_check: skip data version check.
-        """
-        temp = self._buffer_data.from_buffer_copy(self._mmap_instance)
-        if temp.mVersionUpdateEnd == temp.mVersionUpdateBegin or skip_check:
-            self.data = temp
+    def __buffer_copy(self) -> None:
+        """Copy buffer access, helps avoid data desync"""
+        # Copy if data version changed
+        if self._buffer_version.mVersionUpdateEnd != self.data.mVersionUpdateEnd:
+            temp = self._buffer_data.from_buffer_copy(self._mmap_instance)
+            # Check data integraty before assign copy
+            if temp.mVersionUpdateEnd == temp.mVersionUpdateBegin:
+                self.data = temp
 
 
 class MMapDataSet:
@@ -183,8 +191,6 @@ class MMapDataSet:
         """Update mmap data"""
         self.scor.update()
         self.tele.update()
-        #self.ext.update()
-        #self.ffb.update()
 
 
 class SyncData:

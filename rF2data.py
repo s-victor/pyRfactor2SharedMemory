@@ -4,9 +4,9 @@ Auto-generated from rF2data.cs
 """
 # pylint: disable=C,R,W
 
-from enum import Enum, auto, Flag
 import ctypes
 import mmap
+from enum import Enum, Flag
 
 
 class rFactor2Constants:
@@ -299,15 +299,15 @@ class rF2SafetyCarInstruction(Enum):
 
 class rF2TrackRulesCommand(Enum):
     AddFromTrack = 0
-    AddFromPit = auto()        # exited pit during full-course yellow
-    AddFromUndq = auto()       # during a full-course yellow, the admin reversed a disqualification
-    RemoveToPit = auto()       # entered pit during full-course yellow
-    RemoveToDnf = auto()       # vehicle DNF"d during full-course yellow
-    RemoveToDq = auto()        # vehicle DQ"d during full-course yellow
-    RemoveToUnloaded = auto()  # vehicle unloaded (possibly kicked out or banned) during full-course yellow
-    MoveToBack = auto()        # misbehavior during full-course yellow, resulting in the penalty of being moved to the back of their current line
-    LongestTime = auto()       # misbehavior during full-course yellow, resulting in the penalty of being moved to the back of the longest line
-    Maximum = auto()           # should be last
+    AddFromPit = 1        # exited pit during full-course yellow
+    AddFromUndq = 2       # during a full-course yellow, the admin reversed a disqualification
+    RemoveToPit = 3       # entered pit during full-course yellow
+    RemoveToDnf = 4       # vehicle DNF'd during full-course yellow
+    RemoveToDq = 5        # vehicle DQ'd during full-course yellow
+    RemoveToUnloaded = 6  # vehicle unloaded (possibly kicked out or banned) during full-course yellow
+    MoveToBack = 7        # misbehavior during full-course yellow, resulting in the penalty of being moved to the back of their current line
+    LongestTime = 8       # misbehavior during full-course yellow, resulting in the penalty of being moved to the back of the longest line
+    Maximum = 9           # should be last
 
 
 class rF2TrackRulesColumn(Enum):
@@ -319,7 +319,7 @@ class rF2TrackRulesColumn(Enum):
     MaxLanes = 5        # should be after the valid static lane choices
     Invalid = MaxLanes
     FreeChoice = 6      # free choice (dynamically chosen by driver)
-    Pending = 7         # depends on another participant"s free choice (dynamically set after another driver chooses)
+    Pending = 7         # depends on another participant's free choice (dynamically set after another driver chooses)
     Maximum = 8         # should be last
 
 
@@ -371,7 +371,7 @@ class rF2Wheel(ctypes.Structure):
         ("mDetached", ctypes.c_bool),                       # whether wheel is detached
         ("mStaticUndeflectedRadius", ctypes.c_ubyte),       # tire radius in centimeters
         ("mVerticalTireDeflection", ctypes.c_double),       # how much is tire deflected from its (speed-sensitive) radius
-        ("mWheelYLocation", ctypes.c_double),               # wheel"s y location relative to vehicle y location
+        ("mWheelYLocation", ctypes.c_double),               # wheel's y location relative to vehicle y location
         ("mToe", ctypes.c_double),                          # current toe angle w.r.t. the vehicle
         ("mTireCarcassTemperature", ctypes.c_double),       # rough average of temperature samples from carcass (Kelvin)
         ("mTireInnerLayerTemperature", ctypes.c_double*3),  # rough average of temperature samples from innermost layer of rubber (before carcass) (Kelvin)
@@ -428,7 +428,7 @@ class rF2VehicleTelemetry(ctypes.Structure):
         ("mLastImpactET", ctypes.c_double),                   # time of last impact
         ("mLastImpactMagnitude", ctypes.c_double),            # magnitude of last impact
         ("mLastImpactPos", rF2Vec3),                          # location of last impact
-        ("mEngineTorque", ctypes.c_double),                   # current engine torque (including additive torque) (used to be mEngineTq, but there"s little reason to abbreviate it)
+        ("mEngineTorque", ctypes.c_double),                   # current engine torque (including additive torque) (used to be mEngineTq, but there's little reason to abbreviate it)
         ("mCurrentSector", ctypes.c_int),                     # the current sector (zero-based) with the pitlane stored in the sign bit (example: entering pits from third sector gives 0x80000002)
         ("mSpeedLimiter", ctypes.c_ubyte),                    # whether speed limiter is on
         ("mMaxGears", ctypes.c_ubyte),                        # maximum forward gears
@@ -509,7 +509,7 @@ class rF2VehicleScoring(ctypes.Structure):
         ("mDriverName", ctypes.c_char*32),       # driver name
         ("mVehicleName", ctypes.c_char*64),      # vehicle name
         ("mTotalLaps", ctypes.c_short),          # laps completed
-        ("mSector", ctypes.c_byte),              # 0=sector3, 1=sector1, 2 = sector2 (don"t ask why)
+        ("mSector", ctypes.c_byte),              # 0=sector3, 1=sector1, 2 = sector2 (don't ask why)
         ("mFinishStatus", ctypes.c_byte),        # 0=none, 1=finished, 2=dnf, 3 = dq
         ("mLapDist", ctypes.c_double),           # current distance around track
         ("mPathLateral", ctypes.c_double),       # lateral position with respect to *very approximate* "center" path
@@ -524,8 +524,8 @@ class rF2VehicleScoring(ctypes.Structure):
         ("mCurSector2", ctypes.c_double),        # current sector 2 (plus sector 1) if valid
         ("mNumPitstops", ctypes.c_short),        # number of pitstops made
         ("mNumPenalties", ctypes.c_short),       # number of outstanding penalties
-        ("mIsPlayer", ctypes.c_bool),            # is this the player"s vehicle
-        ("mControl", ctypes.c_byte),             # who"s in control: -1=nobody (shouldn"t get this), 0=local player, 1=local AI, 2=remote, 3 = replay (shouldn"t get this)
+        ("mIsPlayer", ctypes.c_bool),            # is this the player's vehicle
+        ("mControl", ctypes.c_byte),             # who's in control: -1=nobody (shouldn't get this), 0=local player, 1=local AI, 2=remote, 3 = replay (shouldn't get this)
         ("mInPits", ctypes.c_bool),              # between pit entrance and pit exit (not always accurate for remote vehicles)
         ("mPlace", ctypes.c_ubyte),              # 1-based position
         ("mVehicleClass", ctypes.c_char*32),     # vehicle class
@@ -618,7 +618,7 @@ class rF2TrackRulesParticipant(ctypes.Structure):
         ("mColumnAssignment", ctypes.c_int),            # which column (line/lane) that participant is supposed to be in
         ("mPositionAssignment", ctypes.c_int),          # 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
         ("mPitsOpen", ctypes.c_ubyte),                  # whether the rules allow this particular vehicle to enter pits right now (input is 2=false or 3=true; if you want to edit it, set to 0=false or 1 = true)
-        ("mUpToSpeed", ctypes.c_bool),                  # while in the frozen order, this flag indicates whether the vehicle can be followed (this should be false for somebody who has temporarily spun and hasn"t gotten back up to speed yet)
+        ("mUpToSpeed", ctypes.c_bool),                  # while in the frozen order, this flag indicates whether the vehicle can be followed (this should be false for somebody who has temporarily spun and hasn't gotten back up to speed yet)
         ("mUnused", ctypes.c_bool*2),                   #
         ("mGoalRelativeDistance", ctypes.c_double),     # calculated based on where the leader is, and adjusted by the desired column spacing and the column/position assignments
         ("mMessage", ctypes.c_char*96),                 # a message for this participant to explain what is going on it will get run through translator on client machines
@@ -636,7 +636,7 @@ class rF2TrackRules(ctypes.Structure):
         ("mNumActions", ctypes.c_int),                     # number of recent actions
         ("pointer1", ctypes.c_ubyte*8),
         ("mNumParticipants", ctypes.c_int),                # number of participants (vehicles)
-        ("mYellowFlagDetected", ctypes.c_bool),            # whether yellow flag was requested or sum of participant mYellowSeverity"s exceeds mSafetyCarThreshold
+        ("mYellowFlagDetected", ctypes.c_bool),            # whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
         ("mYellowFlagLapsWasOverridden", ctypes.c_ubyte),  # whether mYellowFlagLaps (below) is an admin request (0=no 1=yes 2 = clear yellow)
         ("mSafetyCarExists", ctypes.c_bool),               # whether safety car even exists
         ("mSafetyCarActive", ctypes.c_bool),               # whether safety car is active
