@@ -8,6 +8,7 @@ Cross-platform Linux support (by Bernat)
 """
 
 from __future__ import annotations
+
 import ctypes
 import logging
 import mmap
@@ -59,24 +60,26 @@ class MMapControl:
 
     __slots__ = (
         "_mmap_name",
-        "_buffer_data",
-        "_buffer_version",
-        "_mmap_instance",
+        "_mmap_buffer",
+        "_struct",
+        "_buffer",
+        "_version",
         "update",
         "data",
     )
 
-    def __init__(self, mmap_name: str, buffer_data: ctypes.Structure) -> None:
+    def __init__(self, mmap_name: str, data_struct: ctypes.Structure) -> None:
         """Initialize memory map setting
 
         Args:
             mmap_name: mmap filename, ex. $rFactor2SMMP_Scoring$.
-            buffer_data: buffer data class, ex. rF2data.rF2Scoring.
+            data_struct: ctypes data structure, ex. rF2data.rF2Scoring.
         """
         self._mmap_name = mmap_name
-        self._buffer_data = buffer_data
-        self._buffer_version = None
-        self._mmap_instance = None
+        self._mmap_buffer = None
+        self._struct = data_struct
+        self._buffer = bytearray()
+        self._version = None
         self.update = None
         self.data = None
 
@@ -90,19 +93,20 @@ class MMapControl:
             access_mode: 0 = copy access, 1 = direct access.
             rf2_pid: rF2 Process ID for accessing server data.
         """
-        self._mmap_instance = platform_mmap(
+        self._mmap_buffer = platform_mmap(
             name=self._mmap_name,
-            size=ctypes.sizeof(self._buffer_data),
+            size=ctypes.sizeof(self._struct),
             pid=rf2_pid
         )
 
         if access_mode:
+            self.data = self._struct.from_buffer(self._mmap_buffer)
             self.update = self.__buffer_share
-            self.data = self._buffer_data.from_buffer(self._mmap_instance)
         else:
+            self._buffer[:] = self._mmap_buffer
+            self.data = self._struct.from_buffer(self._buffer)
+            self._version = rF2data.rF2MappedBufferVersionBlock.from_buffer(self._mmap_buffer)
             self.update = self.__buffer_copy
-            self.data = self._buffer_data.from_buffer_copy(self._mmap_instance)
-            self._buffer_version = rF2data.rF2MappedBufferVersionBlock.from_buffer(self._mmap_instance)
 
         mode = "Direct" if access_mode else "Copy"
         logger.info("sharedmemory: ACTIVE: %s (%s Access)", self._mmap_name, mode)
@@ -112,10 +116,10 @@ class MMapControl:
 
         Create a final accessible mmap data copy before closing mmap instance.
         """
-        self.data = self._buffer_data.from_buffer_copy(self._mmap_instance)
-        self._buffer_version = None
+        self.data = self._struct.from_buffer_copy(self._mmap_buffer)
+        self._version = None
         try:
-            self._mmap_instance.close()
+            self._mmap_buffer.close()
             logger.info("sharedmemory: CLOSED: %s", self._mmap_name)
         except BufferError:
             logger.error("sharedmemory: buffer error while closing %s", self._mmap_name)
@@ -127,11 +131,8 @@ class MMapControl:
     def __buffer_copy(self) -> None:
         """Copy buffer access, helps avoid data desync"""
         # Copy if data version changed
-        if self._buffer_version.mVersionUpdateEnd != self.data.mVersionUpdateEnd:
-            temp = self._buffer_data.from_buffer_copy(self._mmap_instance)
-            # Check data integraty before assign copy
-            if temp.mVersionUpdateEnd == temp.mVersionUpdateBegin:
-                self.data = temp
+        if self._version.mVersionUpdateEnd != self.data.mVersionUpdateEnd:
+            self._buffer[:] = self._mmap_buffer
 
 
 def test_api():
