@@ -791,7 +791,7 @@ class rF2PitInfo(ctypes.Structure):
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
         ("mVersionUpdateEnd", ctypes.c_uint),    # Incremented after buffer write is done.
-        ("mPitMneu", rF2PitMenu),
+        ("mPitMenu", rF2PitMenu),
     ]
 
 

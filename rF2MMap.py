@@ -16,11 +16,13 @@ import platform
 
 try:
     from . import rF2data
+    from .rF2data import rFactor2Constants
 except ImportError:  # standalone, not package
     import rF2data
+    from rF2data import rFactor2Constants
 
 PLATFORM = platform.system()
-MAX_VEHICLES = rF2data.rFactor2Constants.MAX_MAPPED_VEHICLES
+MAX_VEHICLES = rFactor2Constants.MAX_MAPPED_VEHICLES
 INVALID_INDEX = -1
 
 
@@ -145,11 +147,11 @@ def test_api():
     # Test run
     SEPARATOR = "=" * 50
     print("Test API - Start")
-    scoring = MMapControl(rF2data.rFactor2Constants.MM_SCORING_FILE_NAME, rF2data.rF2Scoring)
+    scoring = MMapControl(rFactor2Constants.MM_SCORING_FILE_NAME, rF2data.rF2Scoring)
     scoring.create(1)
-    telemetry = MMapControl(rF2data.rFactor2Constants.MM_TELEMETRY_FILE_NAME, rF2data.rF2Telemetry)
+    telemetry = MMapControl(rFactor2Constants.MM_TELEMETRY_FILE_NAME, rF2data.rF2Telemetry)
     telemetry.create(1)
-    extended = MMapControl(rF2data.rFactor2Constants.MM_EXTENDED_FILE_NAME, rF2data.rF2Extended)
+    extended = MMapControl(rFactor2Constants.MM_EXTENDED_FILE_NAME, rF2data.rF2Extended)
     extended.create(1)
 
     print(SEPARATOR)
