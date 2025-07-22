@@ -133,7 +133,7 @@ class MMapControl:
     def __buffer_copy(self) -> None:
         """Copy buffer access, helps avoid data desync"""
         # Copy if data version changed
-        if self._version.mVersionUpdateEnd != self.data.mVersionUpdateEnd:
+        if self.data.mVersionUpdateEnd != self._version.mVersionUpdateEnd == self._version.mVersionUpdateBegin:
             self._buffer[:] = self._mmap_buffer
 
 
