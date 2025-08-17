@@ -335,6 +335,7 @@ class rF2TrackRulesStage(Enum):
 # untranslated namespace rFactor2Data
 # untranslated [StructLayout(LayoutKind.Sequential, Pack = 4)]
 class rF2Vec3(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("x", ctypes.c_double),
@@ -345,6 +346,7 @@ class rF2Vec3(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2Wheel(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mSuspensionDeflection", ctypes.c_double),         # meters
@@ -381,6 +383,7 @@ class rF2Wheel(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2VehicleTelemetry(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mID", ctypes.c_int),                                # slot ID (note that it can be re-used in multiplayer after someone leaves)
@@ -463,6 +466,7 @@ class rF2VehicleTelemetry(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2ScoringInfo(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mTrackName", ctypes.c_char*64),         # current track name
@@ -503,6 +507,7 @@ class rF2ScoringInfo(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2VehicleScoring(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mID", ctypes.c_int),                   # slot ID (note that it can be re-used in multiplayer after someone leaves)
@@ -562,6 +567,7 @@ class rF2VehicleScoring(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2PhysicsOptions(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mTractionControl", ctypes.c_ubyte),          # 0 (off) - 3 (high)
@@ -597,6 +603,7 @@ class rF2PhysicsOptions(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, Pack = 4)]
 class rF2TrackRulesAction(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mCommand", ctypes.c_int),  # recommended action
@@ -607,6 +614,7 @@ class rF2TrackRulesAction(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2TrackRulesParticipant(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mID", ctypes.c_int),                          # slot ID
@@ -628,6 +636,7 @@ class rF2TrackRulesParticipant(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2TrackRules(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mCurrentET", ctypes.c_double),                   # current time
@@ -665,6 +674,7 @@ class rF2TrackRules(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2PitMenu(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mCategoryIndex", ctypes.c_int),     # index of the current category
@@ -678,6 +688,7 @@ class rF2PitMenu(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2WeatherControlInfo(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mET", ctypes.c_double),                      # when you want this weather to take effect
@@ -695,6 +706,7 @@ class rF2WeatherControlInfo(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2MappedBufferVersionBlock(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -704,6 +716,7 @@ class rF2MappedBufferVersionBlock(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2MappedBufferVersionBlockWithSize(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -714,6 +727,7 @@ class rF2MappedBufferVersionBlockWithSize(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2Telemetry(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -726,6 +740,7 @@ class rF2Telemetry(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2Scoring(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -738,6 +753,7 @@ class rF2Scoring(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2Rules(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -751,6 +767,7 @@ class rF2Rules(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2ForceFeedback(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -761,6 +778,7 @@ class rF2ForceFeedback(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2GraphicsInfo(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mCamPos", rF2Vec3),                # camera position
@@ -777,6 +795,7 @@ class rF2GraphicsInfo(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2Graphics(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -787,6 +806,7 @@ class rF2Graphics(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2PitInfo(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -797,6 +817,7 @@ class rF2PitInfo(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2Weather(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -808,6 +829,7 @@ class rF2Weather(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, Pack = 4)]
 class rF2TrackedDamage(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mMaxImpactMagnitude", ctypes.c_double),          # Max impact magnitude.  Tracked on every telemetry update, and reset on visit to pits or Session restart.
@@ -817,6 +839,7 @@ class rF2TrackedDamage(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, Pack = 4)]
 class rF2VehScoringCapture(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mID", ctypes.c_int),             # slot ID (note that it can be re-used in multiplayer after someone leaves)
@@ -828,6 +851,7 @@ class rF2VehScoringCapture(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, Pack = 4)]
 class rF2SessionTransitionCapture(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mGamePhase", ctypes.c_ubyte),
@@ -839,6 +863,7 @@ class rF2SessionTransitionCapture(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2Extended(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),                             # Incremented right before buffer is written to.
@@ -880,6 +905,7 @@ class rF2Extended(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2HWControl(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -892,6 +918,7 @@ class rF2HWControl(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2WeatherControl(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -903,6 +930,7 @@ class rF2WeatherControl(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2RulesControl(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
@@ -916,6 +944,7 @@ class rF2RulesControl(ctypes.Structure):
 
 # untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2PluginControl(ctypes.Structure):
+    __slots__ = ()
     _pack_ = 4
     _fields_ = [
         ("mVersionUpdateBegin", ctypes.c_uint),  # Incremented right before buffer is written to.
