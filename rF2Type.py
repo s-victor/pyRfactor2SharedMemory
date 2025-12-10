@@ -225,6 +225,11 @@ class rF2VehicleScoring(_NOINIT):
     mPitLapDist: float
     mBestLapSector1: float
     mBestLapSector2: float
+    mSteamID: int
+    mVehFilename: str
+    mAttackMode: int
+    mFuelFraction: float
+    mDRSState: bool
     mExpansion: tuple[int, ...]
 
 

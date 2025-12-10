@@ -561,7 +561,12 @@ class rF2VehicleScoring(ctypes.Structure):
         ("mPitLapDist", ctypes.c_float),         # location of pit in terms of lap distance
         ("mBestLapSector1", ctypes.c_float),     # sector 1 time from best lap (not necessarily the best sector 1 time)
         ("mBestLapSector2", ctypes.c_float),     # sector 2 time from best lap (not necessarily the best sector 2 time)
-        ("mExpansion", ctypes.c_ubyte*48),       # for future use
+        ("mSteamID", ctypes.c_ulonglong),        # SteamID of the current driver (if any)
+        ("mVehFilename", ctypes.c_char*32),      # filename of veh file used to identify this vehicle.
+        ("mAttackMode", ctypes.c_short),
+        ("mFuelFraction", ctypes.c_ubyte),       # Percentage of fuel or battery left in vehicle. 0x00 = 0%; 0xFF = 100%
+        ("mDRSState", ctypes.c_bool),            # DRS (RearFlap) state
+        ("mExpansion", ctypes.c_ubyte*4),        # for future use
     ]
 
 
@@ -1001,12 +1006,48 @@ class SimInfo:
 def test():
     """Example usage"""
     info = SimInfo()
-    version = bytes(info.Rf2Ext.mVersion).decode().rstrip()
-    clutch = info.Rf2Tele.mVehicles[0].mUnfilteredClutch  # 1.0 clutch down, 0 clutch up
-    gear = info.Rf2Tele.mVehicles[0].mGear  # -1 to 6
-    print(f"API version: {version if version else 'not found'}")
-    print(f"Gear: {gear}, Clutch position: {clutch}")
-    print(f"Unsubscribed buffers: {SubscribedBuffer(info.Rf2Ext.mUnsubscribedBuffersMask)}")
+
+    scor_data = info.Rf2Scor
+    tele_data = info.Rf2Tele
+    ext_data = info.Rf2Ext
+
+    selected_player_index = 0
+
+    player_scor_data = scor_data.mVehicles[selected_player_index]
+    player_tele_data = tele_data.mVehicles[selected_player_index]
+
+    print("-"*40)
+    print("Plugin info:")
+    print("Version:", bytes(ext_data.mVersion).decode().rstrip())
+    print("Unsubscribed buffers:", SubscribedBuffer(ext_data.mUnsubscribedBuffersMask))
+
+    print("-"*40)
+    print("Scoring info:")
+    print("Track name:", scor_data.mScoringInfo.mTrackName)
+    print("Local player name:", scor_data.mScoringInfo.mPlayerName)
+    print("Setting name:", scor_data.mScoringInfo.mPlrFileName)
+    print("Total vehicles:", scor_data.mScoringInfo.mNumVehicles)
+
+    print("-"*40)
+    print("Selected Player scoring info:")
+    print("Slot ID:", player_scor_data.mID)
+    print("Driver name:", player_scor_data.mDriverName)
+    print("VEH file:", player_scor_data.mVehFilename)
+    print("Is local player:", player_scor_data.mIsPlayer)
+
+    print("-"*40)
+    print("Selected player telemetry info:")
+    print("Slot ID:", player_tele_data.mID)
+    print("Gear:", player_tele_data.mGear)
+    print("Throttle:", player_tele_data.mUnfilteredThrottle)
+    print("Brake:", player_tele_data.mUnfilteredBrake)
+    print("Clutch:", player_tele_data.mUnfilteredClutch)
+
+    player_scor_data = None
+    player_tele_data = None
+    scor_data = None
+    tele_data = None
+    ext_data = None
 
 
 if __name__ == "__main__":
